@@ -1,0 +1,684 @@
+---
+title: "STA 380, Part 2: Exercises"
+author: "Mario Gonzalez"
+date: "8/16/2021"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+https://github.com/marioxgonzalez/STA-380-Part-2-Exercises
+
+# Visual Story Telling Part 1: Green Buildings
+```{r loading libraries - Green, message = FALSE, echo=FALSE}
+library(mosaic)
+```
+
+```{r Loading Data - Green, message = FALSE, echo=FALSE}
+green = read.csv('data/greenbuildings.csv')
+```
+
+In the dataset available, there are 7209 non-green buildings while only 685 green buildings. The mean and median for non-green buildings is \$28 and \$25, respectively. The mean and median for green buildings is \$30 and \$27.60, respectively.
+
+## Histograms
+
+Next, lets look at the distribution of rent for both green and non-green buildings.
+
+```{r Data Exploration - Green, message = FALSE, echo=FALSE, results='hide'}
+# Extract the buildings with green ratings
+green_only = subset(green, green_rating==1)
+
+# Buildings without green ratings
+non_green = subset(green, green_rating==0)
+
+mean(non_green$Rent)
+median(non_green$Rent)
+
+mean(green_only$Rent)
+median(green_only$Rent)
+```
+
+```{r Histogram Green - Green, message = FALSE, echo=FALSE}
+
+# Green Exploration
+hist(green_only$Rent, 25, 
+     main = "Histogram of Rent for Green Buildings",
+     ylab = "# of Buildings",
+     xlab = "Average rent per square foot per year ($)",
+     col="blue")
+```
+```{r Histogram Non-Green - Green, message = FALSE, echo=FALSE}
+
+# Green Exploration
+hist(non_green$Rent, 25, 
+     main = "Histogram of Rent for Non-Green Buildings",
+     ylab = "# of Buildings",
+     xlab = "Average rent per square foot per year ($)",
+     col="blue")
+```
+As seen in the charts above, there are many more outliers in the green building dataset. This could be due to the smaller sample size.
+
+## Bootstrap
+
+Even with a smaller sample size, we can get a better understanding of the data by bootstrapping the data and seeing what the distribution looks like. We can do this for both the mean and the median and compare.
+
+```{r Bootstrap Histogram Mean- Green, message = FALSE, echo=FALSE}
+boot_green_mean = do(2500)*{
+  mean(resample(green_only)$Rent)
+}
+
+hist(boot_green_mean$result, 30,
+     main = "Boostrapped Histogram of Rent for Green Buildings",
+     ylab = "# of Buildings",
+     xlab = "Average rent per square foot per year ($)",
+     col="blue")
+```
+
+```{r Bootstrap Histogram Mean- Non-Green, message = FALSE, echo=FALSE}
+boot_nongreen_mean = do(2500)*{
+	mean(resample(non_green)$Rent)
+}
+
+hist(boot_nongreen_mean$result, 30,
+     main = "Boostrapped Histogram of Rent for Non-Green Buildings",
+     ylab = "# of Buildings",
+     xlab = "Average rent per square foot per year ($)",
+     col="blue")
+```
+
+```{r Bootstrap Confidence Mean, message = FALSE, echo=FALSE}
+confint(boot_green_mean, level=0.95)
+confint(boot_nongreen_mean, level=0.95)
+```
+
+With a confidence interval of 95%, the mean rent per square foot a year would be between \$29.07 and \$30.99 for green buildings. For non green buildings the 95% confidence interval is \$27.90 to \$28.62.
+
+```{r Bootstrap Histogram Median- Green, message = FALSE, echo=FALSE}
+boot_green_median = do(2500)*{
+	median(resample(green_only)$Rent)
+}
+
+hist(boot_green_median$result, 30,
+     main = "Boostrapped Histogram of Rent for Non-Green Buildings",
+     ylab = "# of Buildings",
+     xlab = "Average rent per square foot per year ($)",
+     col="blue")
+```
+
+```{r Bootstrap Histogram Median- Non-Green, message = FALSE, echo=FALSE}
+boot_nongreen_median = do(2500)*{
+	median(resample(non_green)$Rent)
+}
+
+hist(boot_nongreen_median$result, 30,
+     main = "Boostrapped Histogram of Rent for Non-Green Buildings",
+     ylab = "# of Buildings",
+     xlab = "Average rent per square foot per year ($)",
+     col="blue")
+```
+
+```{r Bootstrap Confidence Median, message = FALSE, echo=FALSE}
+confint(boot_green_median, level=0.95)
+confint(boot_nongreen_median, level=0.95)
+```
+With a confidence interval of 95%, the median rent per square foot a year would be between \$26.86 and \$28.50 for green buildings. For non green buildings the 95% confidence interval is \$24.60 to \$25.20. This aligns with the results found by the other staff member, although I believe the bootstrapping of the mean is a better interpretation of the dataset and recommend using \$30 for the green building and \$28.27 for the non-green building. This results in a difference of \$1.73 per square foot per year resulting in extra revenue of \$432,500 which at full capacity would take 11.5 years to recuperate this investment.
+
+# Visual Story Telling Part 2: flights at ABIA
+```{r loading libraries, message = FALSE, echo= FALSE}
+rm(list = ls())
+library(ggplot2)
+library(ggthemes)
+```
+
+```{r reading data - ABIA, echo=FALSE}
+df = read.csv("data/ABIA.csv")
+```
+
+```{r Formatting Data - ABIA, echo=FALSE, message=FALSE}
+flights = df[,c("Month","CarrierDelay","WeatherDelay","NASDelay","SecurityDelay","LateAircraftDelay")]
+
+delays = flights[complete.cases(flights[ , 2:6]),]
+delays[delays == 0] <- NA
+delays$CarrierDelay[!is.na(delays$CarrierDelay)]<- 1
+delays$WeatherDelay[!is.na(delays$WeatherDelay)]<- 1
+delays$NASDelay[!is.na(delays$NASDelay)]<- 1
+delays$SecurityDelay[!is.na(delays$SecurityDelay)]<- 1
+delays$LateAircraftDelay[!is.na(delays$LateAircraftDelay)]<- 1
+
+weather_delays = delays[,c("Month","WeatherDelay")]
+weather <- na.omit(weather_delays)
+
+carrier_delay = delays[,c("Month","CarrierDelay")]
+carrier <- na.omit(carrier_delay)
+
+nas_delays = delays[,c("Month","NASDelay")]
+nas <- na.omit(nas_delays)
+
+security_delays = delays[,c("Month","SecurityDelay")]
+security <- na.omit(security_delays)
+
+lateaircraft_delay = delays[,c("Month","LateAircraftDelay")]
+late_aircraft <- na.omit(lateaircraft_delay)
+```
+
+## Charts
+```{r Charts - ABIA, echo=FALSE}
+ggplot(data=weather, aes(x=as.factor(Month))) + 
+  geom_bar(aes(fill=..count..))+
+  labs(x = 'Month',title = "Weather Delays by Month", y = "# of Delays")
+
+ggplot(data=carrier, aes(x=as.factor(Month))) + 
+  geom_bar(aes(fill=..count..))+
+  labs(x = 'Month',title = "Carrier Delays by Month", y = "# of Delays")
+
+ggplot(data=nas, aes(x=as.factor(Month))) + 
+  geom_bar(aes(fill=..count..))+
+  labs(x = 'Month',title = "NAS Delays by Month", y = "# of Delays")
+
+ggplot(data=security, aes(x=as.factor(Month))) + 
+  geom_bar(aes(fill=..count..))+
+  labs(x = 'Month',title = "Security Delays by Month", y = "# of Delays")
+
+ggplot(data=late_aircraft, aes(x=as.factor(Month))) + 
+  geom_bar(aes(fill=..count..))+
+  labs(x = 'Month',title = "Late Aircraft Delays by Month", y = "# of Delays")
+```
+An exploration of flight delays finds that the best months to travel if you want to avoid delays is in September, October and November.
+
+# Portfolio Modeling
+
+3 different portfolios were created with different investment strategies. 
+
+The first was a very diverse portfolio with holdings of a total US stock market etf (VTI), a US Bond market etf (BND) and an emerging market etf (VWO) to gain exposure to non-US markets. The portfolio allocation will be split to 70% VTI, 20% BND, and 10% VWO. This portfolio will be referred to as the diverse portfolio.
+
+The second portfolio was a much higher risk portfolio consisting of high-growth stocks in innovative industries. The etfs in this portfolio are QQQ, ARKK, VONG and VUG which will all have 25% allocation. This portfolio will be referred to as the high-risk portfolio.
+
+The third portfolio is a lower risk, lower volatility portfolio for a more conservative investment strategy. The etfs in this portfolio are VNQ, VYM, VIG, and VTV and will all have equal allocations. This portfolio will be referred to as the low_risk portfolio.
+
+```{r loading libraries - Portfolio, message = FALSE, echo=FALSE}
+rm(list = ls())
+library(mosaic)
+library(quantmod)
+library(foreach)
+```
+
+```{r Formatting Data - Portfolio, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Choose stocks in each portfolio
+mystocks = c("VWO", "VTI", "BND")
+mystocks2 = c("QQQ", "ARKK", "VONG","VUG")
+mystocks3 = c("VNQ", "VYM", "VIG","VTV")
+
+# Get price history for these stocks
+myprices = getSymbols(mystocks, from = "2016-08-11")
+myprices2 = getSymbols(mystocks2, from = "2016-08-11")
+myprices3 = getSymbols(mystocks3, from = "2016-08-11")
+
+# Adjust all the stock prices
+for(ticker in mystocks) {
+	expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+	eval(parse(text=expr))
+}
+for(ticker in mystocks2) {
+  expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+  eval(parse(text=expr))
+}
+for(ticker in mystocks3) {
+  expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+  eval(parse(text=expr))
+}
+
+# Combine all the returns in a matrix
+all_returns1 = cbind(	ClCl(VWOa),
+								ClCl(VTIa),
+								ClCl(BNDa))
+all_returns1 = as.matrix(na.omit(all_returns1))
+
+all_returns2 = cbind(	ClCl(QQQa),
+                     ClCl(ARKKa),
+                     ClCl(VONGa),
+                     ClCl(VONGa))
+all_returns2 = as.matrix(na.omit(all_returns2))
+
+all_returns3 = cbind(	ClCl(VNQa),
+                      ClCl(VYMa),
+                      ClCl(VIGa),
+                      ClCl(VTVa))
+all_returns3 = as.matrix(na.omit(all_returns3))
+```
+## Portfolio Simulations
+
+To evaluate the performance of the portfolios, holding periods of 20 trading days were simulated 5000 times.
+```{r Portfolio Simulation, echo=FALSE}
+
+# Simulation for Portfolio 1
+initial_wealth = 100000
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.1,0.7,0.2)
+	holdings = weights * total_wealth
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns1, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		holdings = weights * total_wealth
+		wealthtracker[today] = total_wealth
+	}
+	wealthtracker
+}
+
+# Simulation for Portfolio 2
+initial_wealth = 100000
+sim2 = foreach(i=1:5000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weights = c(0.25,0.25,0.25,0.25)
+  holdings = weights * total_wealth
+  n_days = 20
+  wealthtracker = rep(0, n_days)
+  for(today in 1:n_days) {
+    return.today = resample(all_returns2, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return.today
+    total_wealth = sum(holdings)
+    holdings = weights * total_wealth
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+
+# Simulation for Portfolio 3
+initial_wealth = 100000
+sim3 = foreach(i=1:5000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weights = c(0.25,0.25,0.25,0.25)
+  holdings = weights * total_wealth
+  n_days = 20
+  wealthtracker = rep(0, n_days)
+  for(today in 1:n_days) {
+    return.today = resample(all_returns3, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return.today
+    total_wealth = sum(holdings)
+    holdings = weights * total_wealth
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+```
+
+```{r Profit Loss, echo=FALSE, results='hide'}
+mean(sim1[,n_days] - initial_wealth)
+mean(sim2[,n_days] - initial_wealth)
+mean(sim3[,n_days] - initial_wealth)
+```
+
+## Portfolios' Profit/Loss Histograms
+```{r Profit/Loss Histograms, echo = FALSE}
+hist(sim1[,n_days]- initial_wealth, breaks=30,
+     main = "Diverse Portfolio Profit/Loss Histogram",
+     ylab = "Frequency of Simulation",
+     xlab = "Profit/Loss ($)",
+     col="blue")
+hist(sim2[,n_days]- initial_wealth, breaks=50,
+     main = "High-Risk Portfolio Profit/Loss Histogram",
+     ylab = "Frequency of Simulation",
+     xlab = "Profit/Loss ($)",
+     col="blue")
+hist(sim3[,n_days]- initial_wealth, breaks=30,
+     main = "Low-Risk Portfolio Profit/Loss Histogram",
+     ylab = "Frequency of Simulation",
+     xlab = "Profit/Loss ($)",
+     col="blue")
+```
+
+## Portfolios' 5% at Risk
+```{r 5% Risk, echo=FALSE, results='hide'}
+quantile(sim1[,n_days]- initial_wealth, prob=0.05)
+quantile(sim2[,n_days]- initial_wealth, prob=0.05)
+quantile(sim3[,n_days]- initial_wealth, prob=0.05)
+```
+This diverse portfolio's average profit over 4 weeks was \$1,125 and the 5% risk was -\$6,357. 
+
+The average profit for the high-risk portfolio was \$5044 with a 5% risk of -\$8213.
+
+The average profit for the low-risk portfolio was \$1,017 with a 5% risk of -\$7418.
+
+Although the low-risk portfolio was created to be lower-risk, the diverse portfolio out performs it in 5% risk and has better average returns.
+
+Between the diverse and high-risk portfolio, the choice for investors comes down to their risk tolerance. Although the high-risk portfolio's 5% risk is ~33% higher, its average return is ~400% greater.
+
+# Market Segmentation
+```{r Loading Libraries - Market, echo=FALSE, message=FALSE}
+library(ggplot2)
+library(LICORS)  # for kmeans++
+library(foreach)
+library(mosaic)
+library(tidyverse)
+```
+
+```{r reading data - Market, echo=FALSE}
+df = read.csv("data/social_marketing.csv")
+```
+
+```{r Scaling Data - Market, echo=FALSE}
+# Get rid of first column and scale data
+X = df[,-1]
+X = scale(X, center=TRUE, scale=TRUE)
+```
+
+## Correlation Plot
+
+To begin, I first looked at a correlation matrix to see if any of the variables were highly correlated.
+```{r Correlation Plot - Market, echo=FALSE}
+ggcorrplot::ggcorrplot(cor(X), hc.order = TRUE)
+```
+As seen in the chart above there were quite a few variables that were highly correlated.
+
+Correlated Variables:\
+  - fashion, cooking and beauty.\
+  - family, school, food, sports_fandom, religion, and parents.\
+  - college_uni, online_gaming, and sports_playing.\
+  - art, tv_film and crafts\
+  - politics, travel and computers\
+  - shopping, chatter and photo_sharing\
+
+Next, to narrow down the number of variables, I ran a principal component analysis.
+```{r Create Principal Components - Market, echo=FALSE}
+set.seed(888)
+PCAsocial = prcomp(X, scale=TRUE, rank. = 10)
+```
+
+## Plot and Summary of PCA - Market
+```{r Plot and Summary of PCA - Market, echo = FALSE}
+plot(PCAsocial)
+summary(PCAsocial)
+```
+
+## Examining PCAs - Market
+Now looking at the different components we can see some groups forming.
+```{r Examining PCAs - Market}
+# create a tidy summary of the loadings
+loadings_summary = PCAsocial$rotation %>%
+  as.data.frame() %>%
+  rownames_to_column('Category')
+
+# Loads negatively on everything
+# Maybe Young vs Old
+## Less negative on spam, adult, online_gaming, college_uni
+## More Negative on religion, parenting, school and family
+loadings_summary %>%
+  select(Category, PC1) %>%
+  arrange(desc(PC1))
+
+# Female vs Male?
+## Loads heavily on cooking, photo-sharing, fashion, shopping, beauty
+## Loads negatively on sports_fandom
+loadings_summary %>%
+  select(Category, PC2) %>%
+  arrange(desc(PC2))
+
+# Home-body vs Outdoors
+## Loads postively on college_uni, online_gaming
+## Negatively on health_nutrition, personal_fitness, outdoors
+loadings_summary %>%
+  select(Category, PC4) %>%
+  arrange(desc(PC4))
+
+# Male vs Female
+## Positively on college_uni, online_gaming, sports_playing
+## Negatively on photo_sharing, shopping, beauty, fashion
+loadings_summary %>%
+  select(Category, PC5) %>%
+  arrange(desc(PC5))
+
+# Hard to interpret
+loadings_summary %>%
+  select(Category, PC6) %>%
+  arrange(desc(PC6))
+
+# Artistic vs Sporty
+## Positively on tv_film, art, crafts
+## Negatively on online_gaming, automotive, sports_playing
+loadings_summary %>%
+  select(Category, PC7) %>%
+  arrange(desc(PC7))
+
+# Business vs Fun?
+## Positive on computers and travel
+## Negative on automotive, news, tv_film and art
+loadings_summary %>%
+  select(Category, PC8) %>%
+  arrange(desc(PC8))
+
+# Loads very negativley on adult and spam
+loadings_summary %>%
+  select(Category, PC9) %>%
+  arrange(desc(PC9))
+
+# Heavily waited towards dating
+loadings_summary %>%
+  select(Category, PC10) %>%
+  arrange(desc(PC10))
+```
+Many of the PCAs gave interesting insights into the twitter followers of NutrientH2O. 
+PCA2 seems to show a relationship with females as the categories positively weighted are cooking, photo-sharing, fashion, shopping, beauty. PCA3 seems to describe someone who likes to stay home with positive weights on college_uni, online_gaming and negative weights on health_nutrition, personal_fitness, outdoors.
+
+# Author Attribution
+```{r Loading Libraries - Author, echo=FALSE, message=FALSE}
+library(tm) 
+library(tidyverse)
+library(slam)
+library(proxy)
+```
+
+```{r ReaderPlain Function, echo=FALSE}
+readerPlain = function(fname){
+				readPlain(elem=list(content=readLines(fname)), 
+							id=fname, language='en') }
+```
+
+```{r reading data - Author, echo=FALSE}
+author_dirs = Sys.glob('data/ReutersC50/C50train/*')
+
+file_list_train = NULL
+labels = NULL
+for(author in author_dirs) {
+  author_name = substring(author, first=29)
+  files_to_add = Sys.glob(paste0(author, '/*.txt'))
+  file_list_train = append(file_list_train, files_to_add) # List of files
+  labels = append(labels, rep(author_name, length(files_to_add))) #Labels of files
+}
+
+author_dirs_test = Sys.glob('data/ReutersC50/C50test/*')
+
+file_list_test = NULL
+labels_test = NULL
+for(author in author_dirs_test) {
+  author_name_test = substring(author, first=28)
+  files_to_add = Sys.glob(paste0(author, '/*.txt'))
+  file_list_test = append(file_list_test, files_to_add) # List of files
+  labels_test = append(labels_test, rep(author_name_test, length(files_to_add))) #Labels of files
+}
+
+# Need a more clever regex to get better names here
+all_docs = lapply(c(file_list_train, file_list_test), readerPlain) 
+names(all_docs) = c(file_list_train,file_list_test)
+names(all_docs) = sub('.txt', '', names(all_docs))
+```
+
+## Preprocessing
+Before starting the analysis, I first preprocessed the files by making all characters lowercase, removing numbers, removing punctuations, removing white space, and removing all stop words using the "SMART" and "en" libraries. After this step there was 45,522 terms left.
+```{r Preprocessing Files - Author, echo=FALSE, message=FALSE, warning=FALSE}
+# Create the corpus of all documents
+my_corpus = Corpus(VectorSource(all_docs))
+
+# Preprocessing
+my_corpus = tm_map(my_corpus, content_transformer(tolower)) # make everything lowercase
+my_corpus = tm_map(my_corpus, content_transformer(removeNumbers)) # remove numbers
+my_corpus = tm_map(my_corpus, content_transformer(removePunctuation)) # remove punctuation
+my_corpus = tm_map(my_corpus, content_transformer(stripWhitespace)) ## remove excess white-space
+my_corpus = tm_map(my_corpus, content_transformer(removeWords), stopwords("SMART")) # Remove Stop words
+my_corpus = tm_map(my_corpus, content_transformer(removeWords), stopwords("en"))
+
+DTM = DocumentTermMatrix(my_corpus)			
+```
+Next I droppped all terms that were not found in 95% of the documents or more. This step reduced the number of terms to 671.
+```{r Dropping Rare Terms, echo=FALSE}
+DTM = removeSparseTerms(DTM, 0.95)
+
+DTM_test = DTM[1:2500,]
+DTM_train = DTM[2501:5000,]
+```
+Now I weighted the terms in each document by term frequency-inverse document frequency, which will be used in prediction modelling.
+```{r Term-Frequency, echo=FALSE}
+# construct TF IDF weights -- might be useful if we wanted to use these
+# as features in a predictive model
+tfidf_train = weightTfIdf(DTM_train)
+tfidf_test = weightTfIdf(DTM_test)
+```
+
+The TF-IDF weights were then used to create a matrix for input into the pca algorithim.
+```{r PCA - Author, echo=FALSE}
+X_train = as.matrix(tfidf_train)
+scrub_cols = which(colSums(X_train) == 0)
+X_train = X_train[,-scrub_cols]
+
+X_test = as.matrix(tfidf_test)
+scrub_cols = which(colSums(X_test) == 0)
+X_test = X_test[,-scrub_cols]
+
+set.seed(1)
+pca_train = prcomp(X_train, scale=TRUE, rank. = 138)
+pca_test = prcomp(X_test, scale=TRUE, rank. = 138)
+```
+
+## PCA Loadings - Author
+Now we can look at some of the PCA's to see what grouping were found.
+```{r CA Loadings - Author}
+# Focus on China/Hong Kong politics and financials
+pca_train$rotation[order(abs(pca_train$rotation[,1]),decreasing=TRUE),1][1:25]
+
+# Focus on communication and service companies
+pca_train$rotation[order(abs(pca_train$rotation[,2]),decreasing=TRUE),2][1:25]
+
+# Focus on computer/software
+pca_train$rotation[order(abs(pca_train$rotation[,3]),decreasing=TRUE),2][1:25]
+
+# Focus on Worker Unions
+pca_train$rotation[order(abs(pca_train$rotation[,4]),decreasing=TRUE),2][1:25]
+```
+
+I wanted to run randomforest on the pcas for my prediction model, but couldn't figure out how to use the PCAs in reandomforest.
+```{r RandomForest, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+#library(ISLR)
+
+#set.seed(11)
+#rf.author = randomForest(author~., data=pca_train, ntree = 1000)
+
+#rf.author
+
+#rf.pred = predict(rf.author, newdata = pca_test)
+#rf_MSE = mean((rf.pred - test$author)^2)
+#rf_MSE
+
+#importance(rf.author)
+#varImpPlot(rf.author)
+```
+
+# Association Rule Mining
+```{r Loading Libraries - Groceries, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(arules)  # has a big ecosystem of packages built around it
+library(arulesViz)
+```
+
+```{r Reading in Data - Groceries, echo=FALSE}
+
+groceries <- read.transactions("data/groceries.txt", sep = ",",header=FALSE)
+
+```
+
+## Exploring Groceries Data
+
+First, lets look at which items are most frequently bought.
+```{r Exploring Groceries Data, echo=FALSE}
+itemFrequencyPlot(groceries, support = 0.1,
+                  main = "Items with support greater than 0.1",
+                  col = "blue")
+
+itemFrequencyPlot(groceries, topN = 20,
+                  main = "Top 20 Most Frequently Bought Items",
+                  col = "blue")
+```
+
+```{r Grocery Rules, echo=FALSE, results='hide', message=FALSE}
+groceryrules <- apriori(groceries, 
+                        parameter = list(support =0.006, confidence = 0.25, maxlen = 5))
+```
+
+## Rule Plots
+Next, lets look at the confidence, support and lift of our rules to get a better understanding of the rules.
+```{r Rule PLots, echo=FALSE, message=FALSE}
+# plot all the rules in (support, confidence) space
+# notice that high lift rules tend to have low support
+plot(groceryrules)
+plot(groceryrules, measure = c("support", "lift"), shading = "confidence")
+plot(groceryrules, measure = c("confidence", "lift"), shading = "support")
+# "two key" plot: coloring is by size (order) of item set
+plot(groceryrules, method='two-key plot')
+```
+
+```{r Rule Subsets, echo=FALSE, results='hide'}
+inspect(subset(groceryrules, subset=lift > 3))
+inspect(subset(groceryrules, subset=confidence > 0.5))
+inspect(subset(groceryrules, subset=lift > 2.5 & confidence > 0.25))
+```
+
+
+## Graph of Rules
+```{r Graph of Rules, echo=FALSE, results='hide'}
+# graph-based visualization
+sub1 = subset(groceryrules, subset=confidence > 0.4 & support > 0.008)
+#summary(sub1)
+
+plot(head(sub1, 100, by='lift'), method='graph')
+```
+
+```{r saving Graph as PNG, echo=FALSE}
+saveAsGraph(head(groceryrules, n = 1000, by = "lift"), file = "groceryrules.graphml")
+```
+
+![](C:\Users\Mario\Desktop\MSBA\Classes Summer 2021\Intro to Machine Learning\Q6_Exam.png)
+
+
+Insights:
+As seen in the two-key plot, most rules are dependent on 2 items, leading to a thrid purchased.
+
+Unsurprisingly, many of the associations contained whole milk, root vegetables and other vegetables. This is understandable because these are some of the most frequently bought items.
+
+Some interesting rules that came out of the analysis were, rolls/buns, soda led to the purchase of sausage. Sounds like a barbeque! Sliced cheese --> sausage. Cream cheese, whole milk led to the purchase of yogurt. (Dairy lover?)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
